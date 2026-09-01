@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>動画 → M3U8変換</title>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 700px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+    }
+
+    form {
+      border: 1px solid #ddd;
+      padding: 25px;
+      border-radius: 10px;
+    }
+
+    input {
+      margin: 15px 0;
+    }
+
+    button {
+      padding: 12px 25px;
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    #status {
+      margin-top: 20px;
+    }
+
+    #result {
+      margin-top: 20px;
+      display: none;
+    }
+
+    video {
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    a {
+      word-break: break-all;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>動画 → M3U8変換</h1>
+
+  <form id="form">
+
+    <input
+      type="file"
+      name="video"
+      id="video"
+      accept="video/*"
+      required
+    >
+
+    <br>
+
+    <button type="submit">
+      M3U8に変換
+    </button>
+
+  </form>
+
+  <div id="status"></div>
+
+  <div id="result">
+
+    <h2>変換完了</h2>
+
+    <p>
+      M3U8 URL:
+    </p>
+
+    <a id="url" target="_blank"></a>
+
+    <video
+      id="player"
+      controls
+    ></video>
+
+  </div>
+
+<script>
+
+const form = document.getElementById("form");
+const status = document.getElementById("status");
+const result = document.getElementById("result");
+const urlElement = document.getElementById("url");
+const player = document.getElementById("player");
+
+form.addEventListener("submit", async (event) => {
+
+  event.preventDefault();
+
+  const file = document.getElementById("video").files[0];
+
+  if (!file) {
+    return;
+  }
+
+  status.textContent = "動画をアップロードしています...";
+  result.style.display = "none";
+
+  const formData = new FormData();
+
+  formData.append("video", file);
+
+  try {
+
+    status.textContent =
+      "動画をM3U8に変換しています。しばらくお待ちください...";
+
+    const response = await fetch("/convert", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "変換に失敗しました");
+    }
+
+    const m3u8Url = data.playlist;
+
+    const absoluteUrl =
+      new URL(m3u8Url, window.location.origin).href;
+
+    urlElement.href = absoluteUrl;
+    urlElement.textContent = absoluteUrl;
+
+    /*
+     * SafariなどはM3U8を標準で再生できます。
+     * ChromeなどではHLS.jsを利用する構成にできます。
+     */
+
+    player.src = m3u8Url;
+
+    result.style.display = "block";
+
+    status.textContent = "変換が完了しました。";
+
+  } catch (error) {
+
+    console.error(error);
+
+    status.textContent =
+      "エラー: " + error.message;
+  }
+
+});
+
+</script>
+
+</body>
+</html>
