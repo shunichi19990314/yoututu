@@ -2,48 +2,72 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>動画 → M3U8変換</title>
 
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 50px 20px;
+    }
+
+    .container {
       max-width: 700px;
-      margin: 50px auto;
-      padding: 20px;
+      margin: auto;
+    }
+
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0,0,0,.08);
     }
 
     h1 {
-      margin-bottom: 30px;
-    }
-
-    form {
-      border: 1px solid #ddd;
-      padding: 25px;
-      border-radius: 10px;
+      text-align: center;
     }
 
     input {
-      margin: 15px 0;
+      width: 100%;
+      padding: 14px;
+      margin-top: 20px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 7px;
+      font-size: 16px;
     }
 
     button {
-      padding: 12px 25px;
-      border: 0;
-      border-radius: 6px;
+      width: 100%;
+      margin-top: 15px;
+      padding: 14px;
+      background: #111;
+      color: white;
+      border: none;
+      border-radius: 7px;
+      font-size: 16px;
       cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .5;
     }
 
     #status {
       margin-top: 20px;
+      white-space: pre-wrap;
     }
 
     #result {
-      margin-top: 20px;
       display: none;
+      margin-top: 25px;
+    }
+
+    .url {
+      word-break: break-all;
     }
 
     video {
@@ -51,119 +75,135 @@
       margin-top: 20px;
     }
 
-    a {
-      word-break: break-all;
+    .notice {
+      padding: 12px;
+      background: #fff8df;
+      border-radius: 7px;
+      line-height: 1.6;
+      font-size: 14px;
     }
   </style>
 </head>
 
 <body>
 
-  <h1>動画 → M3U8変換</h1>
+<div class="container">
 
-  <form id="form">
+  <div class="card">
+
+    <h1>動画 → M3U8変換</h1>
+
+    <div class="notice">
+      自分が権利を持つ動画、または権利者から
+      ダウンロード・変換の許可を得ている動画のみ使用してください。
+    </div>
 
     <input
-      type="file"
-      name="video"
-      id="video"
-      accept="video/*"
-      required
+      id="url"
+      type="url"
+      placeholder="動画URLを入力してください"
     >
 
-    <br>
-
-    <button type="submit">
+    <button id="convert">
       M3U8に変換
     </button>
 
-  </form>
+    <div id="status"></div>
 
-  <div id="status"></div>
+    <div id="result">
 
-  <div id="result">
+      <h2>変換完了</h2>
 
-    <h2>変換完了</h2>
+      <p>M3U8 URL：</p>
 
-    <p>
-      M3U8 URL:
-    </p>
+      <p class="url">
+        <a id="playlist" target="_blank"></a>
+      </p>
 
-    <a id="url" target="_blank"></a>
+      <video
+        id="video"
+        controls
+      ></video>
 
-    <video
-      id="player"
-      controls
-    ></video>
+    </div>
 
   </div>
 
+</div>
+
 <script>
 
-const form = document.getElementById("form");
+const button = document.getElementById("convert");
+const input = document.getElementById("url");
 const status = document.getElementById("status");
 const result = document.getElementById("result");
-const urlElement = document.getElementById("url");
-const player = document.getElementById("player");
+const playlist = document.getElementById("playlist");
+const video = document.getElementById("video");
 
-form.addEventListener("submit", async (event) => {
+button.addEventListener("click", async () => {
 
-  event.preventDefault();
+  const url = input.value.trim();
 
-  const file = document.getElementById("video").files[0];
-
-  if (!file) {
+  if (!url) {
+    status.textContent = "動画URLを入力してください。";
     return;
   }
 
-  status.textContent = "動画をアップロードしています...";
+  button.disabled = true;
   result.style.display = "none";
 
-  const formData = new FormData();
-
-  formData.append("video", file);
+  status.textContent =
+    "動画を取得・変換しています。\nしばらくお待ちください。";
 
   try {
 
-    status.textContent =
-      "動画をM3U8に変換しています。しばらくお待ちください...";
-
     const response = await fetch("/convert", {
       method: "POST",
-      body: formData
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        url: url
+      })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "変換に失敗しました");
+      throw new Error(
+        data.error || "変換に失敗しました。"
+      );
     }
 
-    const m3u8Url = data.playlist;
-
     const absoluteUrl =
-      new URL(m3u8Url, window.location.origin).href;
+      new URL(
+        data.playlist,
+        window.location.origin
+      ).href;
 
-    urlElement.href = absoluteUrl;
-    urlElement.textContent = absoluteUrl;
+    playlist.href = absoluteUrl;
+    playlist.textContent = absoluteUrl;
 
-    /*
-     * SafariなどはM3U8を標準で再生できます。
-     * ChromeなどではHLS.jsを利用する構成にできます。
-     */
-
-    player.src = m3u8Url;
+    video.src = data.playlist;
 
     result.style.display = "block";
 
-    status.textContent = "変換が完了しました。";
+    status.textContent =
+      "変換が完了しました。";
 
   } catch (error) {
 
     console.error(error);
 
     status.textContent =
-      "エラー: " + error.message;
+      "エラー：\n" + error.message;
+
+  } finally {
+
+    button.disabled = false;
+
   }
 
 });
