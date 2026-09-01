@@ -1,0 +1,13 @@
+{
+  "name": "video-to-m3u8",
+  "version": "1.0.0",
+  "description": "Convert uploaded videos to HLS M3U8 using FFmpeg",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.2"
+  }
+}
